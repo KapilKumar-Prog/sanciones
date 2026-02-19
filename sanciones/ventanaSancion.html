@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <base target="_top">
+    <style>
+      body {
+        font-family: sans-serif;
+        padding: 10px;
+      }
+      button {
+        margin-top: 20px;
+        padding: 8px 16px;
+        font-size: 14px;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="contenido"></div>
+    <button onclick="copiarYCerrar()">📌 Copiar a Resolución y actualizar</button>
+
+    <script>
+  function copiarYCerrar() {
+    google.script.run
+      .withSuccessHandler(function() {
+        // Cierra la ventana una vez que se ha ejecutado copiarYActualizar
+        google.script.host.close();
+      })
+      .copiarYActualizar(); // Esta función está en tu código Apps Script
+  }
+
+  // Cargar el contenido dinámico enviado desde el servidor
+  google.script.run.withSuccessHandler(function(mensajeHTML) {
+    document.getElementById("contenido").innerHTML = mensajeHTML;
+  }).generarContenidoMensaje();
+</script>
+
+  </body>
+</html>

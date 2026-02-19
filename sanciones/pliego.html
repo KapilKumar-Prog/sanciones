@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <base target="_top">
+  <style>
+    label {display:block; margin-top:8px; font-weight:bold;border-radius: 8px;}
+    input, textarea {width:95%; padding:5px; margin-top:4px;border-radius: 8px;}
+    textarea {min-height:60px; resize:vertical;border-radius: 8px;}
+    button {margin-top:15px; padding:10px 20px; background:#4CAF50; color:#fff; border:none; border-radius:6px; cursor:pointer;}
+    fieldset{border: 2px solid red;border-radius: 8px;}
+    .row {display: flex;  gap: 16px;margin-top: 12px;}
+  </style>
+</head>
+<body>
+  <form id="registroForm">
+    <label>Correo</label>
+    <input type="email" name="correo" placeholder="instructores.taxiarona@gmail.com">
+
+   <fieldset>
+    <label>Nombre y Apellidos</label>
+    <input type="text" name="nombre" id="nombre" placeholder="Nombre y Apellidos">
+    <legend><button type="button" onclick="buscarEnHojas()">Buscar en sanciones y pliegos</button></legend>
+
+   </fieldset>
+
+<div class="row">
+    <label>Teléfono</label>
+    <input type="text" name="telefono" id="telefono">
+
+    <label>DNI</label>
+    <input type="text" name="dni" id="dni">
+</div>
+
+
+    <fieldset>
+    <label>LM</label>
+    <input type="text" name="lm" placeholder="LM">
+    <legend><button type="button">Buscar en "Socios"</button></legend>
+    </fieldset>
+    
+
+    
+
+    <!--<label>Testigos</label>
+    <input type="text" name="testigos">-->
+    <div class="row">
+    <label>Matrícula</label>
+    <input type="text" name="matricula" id="matricula">
+
+    <label>Expediente</label>
+    <input type="text" name="copiado" id="copiado" placeholder="Pegar contenido copiado">
+
+    </div>
+
+    <label>Contenido (obligatorio)</label>
+    <textarea name="contenido" required placeholder="Escribe aquí..."></textarea>
+
+    <label>Subir archivo</label>
+    <input type="file" id="archivo" name="archivo">
+    <button type="button" id="btnSubir">Subir archivo</button>
+    <button type="button" onclick="enviar()" style="float:right">Enviar</button>
+    <p id="archivoLink" style="font-size:12px; color:green;"></p>
+
+    
+  </form>
+
+<div id="progressContainer" style="width:100%; background:#f0f0f0; border-radius:10px; margin:10px 0; display:none;">
+  <div id="progressBar" style="width:0%; height:20px; background:green; border-radius:10px; text-align:center; color:white; font-size:12px;">
+    0%
+  </div>
+</div>
+
+
+  <script>
+    let archivoLink = "";
+
+    // Rellenar contenido copiado si viene de Apps Script
+    window.onload = function() {
+      if (typeof contenidoInicial !== 'undefined' && contenidoInicial) {
+        document.getElementById("copiado").value = contenidoInicial;
+      }
+    };
+
+    // Subir archivo
+    document.getElementById("btnSubir").addEventListener("click", function() {
+      const fileInput = document.getElementById("archivo");
+      if (fileInput.files.length === 0) {
+        alert("Selecciona un archivo primero");
+        return;
+      }
+      const file = fileInput.files[0];
+      const reader = new FileReader();
+      reader.onload = function(e) {
+        const obj = { nombre: file.name, tipo: file.type, datos: [...new Uint8Array(e.target.result)] };
+        google.script.run.withSuccessHandler(function(url) {
+          archivoLink = url;
+          document.getElementById("archivoLink").innerText = "Archivo subido: " + url;
+        }).subirArchivo(obj);
+      };
+      reader.readAsArrayBuffer(file);
+    });
+
+    // Enviar formulario
+    function enviar() {
+      const form = document.getElementById("registroForm");
+      const datos = Object.fromEntries(new FormData(form).entries());
+      datos.archivo = archivoLink;
+      google.script.run.withSuccessHandler(() => google.script.host.close())
+        .procesarFormularioPliegos(datos);
+    }
+
+
+  </script>
+<script>
+function mostrarProgreso(porcentaje) {
+  const progressContainer = document.getElementById("progressContainer");
+  const progressBar = document.getElementById("progressBar");
+
+  progressContainer.style.display = "block";
+  progressBar.style.width = porcentaje + "%";
+  progressBar.innerText = porcentaje + "%";
+}
+
+function buscarEnHojas() {
+  const nombre = document.getElementById("nombre").value.trim();
+  if (!nombre) {
+    alert("Escribe un nombre para buscar");
+    return;
+  }
+
+  // Reiniciar barra
+  mostrarProgreso(0);
+
+  // Simulación de carga (para animar)
+  let progreso = 0;
+  const intervalo = setInterval(() => {
+    if (progreso < 70) {
+      progreso += 10;
+      mostrarProgreso(progreso);
+    }
+  }, 300);
+
+  // Llamada al Apps Script
+  google.script.run
+    .withSuccessHandler(function(datos) {
+      clearInterval(intervalo);
+      mostrarProgreso(100);
+
+      if (datos) {
+        document.querySelector("input[name='correo']").value = datos.correo || "";
+        document.querySelector("input[name='telefono']").value = datos.telefono || "";
+        document.querySelector("input[name='dni']").value = datos.dni || "";
+        document.querySelector("input[name='matricula']").value = datos.matricula || "";
+      } else {
+        alert("No se encontró coincidencia en sanciones ni en pliegos");
+      }
+
+      // Ocultar después de 1s
+      setTimeout(() => {
+        document.getElementById("progressContainer").style.display = "none";
+      }, 1000);
+    })
+    .buscarPersona(nombre);
+}
+</script>
+
+</body>
+</html>
+
+

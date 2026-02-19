@@ -1,0 +1,276 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <base target="_top">
+    <style>
+      label {display:inline-block; margin-top:8px; font-weight:bold;border-radius: 8px;background:beige;width:auto;}
+      input, textarea {width:95%; padding:5px; margin-top:4px;border-radius: 8px;}
+      textarea {min-height:60px; resize:vertical;border-radius: 8px;}
+      button {margin-top:15px; padding:10px 20px; background:#4CAF50; color:#fff; border:none; border-radius:6px; cursor:pointer;}
+      fieldset{border: 2px solid red;border-radius: 8px;}
+      .row {display: flex; width: 95%;}
+      .row fieldset {flex: 1; width:100%; }
+      /* Barra de progreso */
+      #progressBarContainer {
+        width: 100%;
+        background: #ddd;
+        border-radius: 6px;
+        margin-top: 10px;
+        display: none;
+      }
+      #progressBar {
+        width: 0%;
+        height: 20px;
+        background: #4CAF50;
+        border-radius: 6px;
+        text-align: center;
+        color: white;
+        font-size: 12px;
+      }
+    </style>
+  </head>
+  <body>
+    <form id="registroForm">
+      <fieldset>
+      <label>Correo</label>
+      <input type="email" name="correo" id="correo" placeholder="instructores.taxiarona@gmail.com">
+      </fieldset>
+
+     
+      <fieldset><legend><button type="button" onclick="buscarEnHojasSancion()">Buscar histórico</button></legend>
+      <label>Nombre y Apellidos</label>
+      <input type="text" name="nombre" placeholder="DIRECTIVA" id="nombre" style="width:500px" list="listaVerde">
+      <datalist id="listaVerde"></datalist>
+      </fieldset>
+     
+     <div class="row">
+      <fieldset>
+      <label>Teléfono</label>
+      <input type="text" name="telefono" placeholder="922747511" id="telefono">
+      </fieldset>
+     
+      <fieldset>
+      <label>DNI</label>
+      <input type="text" name="dni" placeholder="G38314480" id="dni">
+      </fieldset>
+      </div>
+      
+      <!-- LM del denunciante -->
+      <div class="row">
+<fieldset>
+  <label>LM del denunciante</label>
+  <input type="text" name="lm" placeholder="DIRECTIVA" id="lm" style="width:30px">
+  <button type="button" onclick="buscarEnSocios()">Buscar en Socios</button>
+  <button type="button" onclick="corregirSocio()">Corregir</button>
+</fieldset>
+     
+      
+      <fieldset>
+      <label>LM del denunciado</label>
+      <input type="text" name="lmDenunciado" style="width:30px">
+      </fieldset>
+ </div>
+
+
+      <fieldset>
+      <label>Testigos</label>
+      <input type="text" name="testigos">
+      </fieldset>
+      </div>
+
+      <div class="row">
+      <fieldset>
+      <label>Fecha</label>
+      <input type="date" name="fecha" required>
+      </fieldset>
+
+      <fieldset>
+      <label>Hora</label>
+      <input type="time" name="hora" required>
+      </fieldset>
+
+      <fieldset>
+      <label>Matrícula</label>
+      <input type="text" name="matricula" id="matricula">
+      </fieldset>
+      </div>
+
+
+      <fieldset>
+      <label>Contenido</label>
+      <textarea name="contenido" required placeholder="Escribe aquí..."></textarea>
+      </fieldset>
+
+      <label>Subir archivo</label>
+      <input type="file" id="archivo" name="archivo">
+      <button type="button" onclick="subirArchivo()">Subir archivo</button>
+      <button type="button" onclick="enviar()" style="float-right">Enviar</button>
+      <p id="archivoLink" style="font-size:12px; color:green;"></p>
+
+      <!-- Barra de progreso -->
+      <div id="progressBarContainer">
+        <div id="progressBar">0%</div>
+      </div>
+      
+    </form>
+
+    <script>
+      let archivoLink = "";
+
+      function subirArchivo() {
+        const fileInput = document.getElementById("archivo");
+        if (fileInput.files.length === 0) {
+          alert("Selecciona un archivo primero");
+          return;
+        }
+        const file = fileInput.files[0];
+        const reader = new FileReader();
+        reader.onload = function(e) {
+          const obj = {
+            nombre: file.name,
+            tipo: file.type,
+            datos: [...new Uint8Array(e.target.result)]
+          };
+          google.script.run.withSuccessHandler(function(url) {
+            archivoLink = url;
+            document.getElementById("archivoLink").innerText = "Archivo subido: " + url;
+          }).subirArchivo(obj);
+        };
+        reader.readAsArrayBuffer(file);
+      }
+
+      // 🔹 Mostrar barra de progreso mientras se envía
+       function enviar() {
+    const form = document.getElementById("registroForm");
+
+    // 📌 Revisar "Matrícula"
+    const matriculaInput = document.getElementById("matricula");
+    if (!matriculaInput.value && matriculaInput.placeholder) {
+      matriculaInput.value = matriculaInput.placeholder;
+    }
+
+    // 📌 Revisar "LM del denunciante"
+    const lmInput = document.getElementById("lm");
+    if (!lmInput.value && lmInput.placeholder) {
+      lmInput.value = lmInput.placeholder;
+    }
+
+    const datos = Object.fromEntries(new FormData(form).entries());
+    datos.archivo = archivoLink; 
+
+    mostrarProgreso();
+
+    google.script.run
+      .withSuccessHandler(() => {
+        completarProgreso();
+        setTimeout(() => google.script.host.close(), 1000);
+      })
+      .procesarFormulario(datos);
+  }
+      // Simula barra de progreso (cliente)
+      function mostrarProgreso() {
+        const cont = document.getElementById("progressBarContainer");
+        const bar = document.getElementById("progressBar");
+        cont.style.display = "block";
+        let width = 0;
+        const interval = setInterval(() => {
+          if (width >= 90) {
+            clearInterval(interval);
+          } else {
+            width += 10;
+            bar.style.width = width + "%";
+            bar.innerText = width + "%";
+          }
+        }, 200);
+      }
+      function completarProgreso() {
+        const bar = document.getElementById("progressBar");
+        bar.style.width = "100%";
+        bar.innerText = "100%";
+      }
+
+      // 🔹 Buscar en hojas
+      function buscarEnHojasSancion() {
+        const nombre = document.getElementById("nombre").value;
+        if (!nombre) {
+          alert("Introduce un nombre antes de buscar");
+          return;
+        }
+        google.script.run.withSuccessHandler(function(datos) {
+          if (datos) {
+            document.getElementById("correo").value = datos.correo;
+            document.getElementById("telefono").value = datos.telefono;
+            document.getElementById("dni").value = datos.dni;
+            document.getElementById("matricula").placeholder = datos.matricula;
+            document.getElementById("lm").placeholder = datos.lm;
+          } else {
+            alert("No se encontraron coincidencias");
+          }
+        }).buscarDatosPorNombre(nombre);
+      }
+    </script>
+
+
+    <script>
+  // 🔹 Buscar en la hoja "Socios"
+  function buscarEnSocios() {
+    const lm = document.getElementById("lm").value;
+    if (!lm) {
+      alert("Introduce el LM del denunciante antes de buscar");
+      return;
+    }
+
+    google.script.run.withSuccessHandler(function(datos) {
+      if (datos) {
+        document.getElementById("nombre").value = datos.nombre;
+        document.getElementById("dni").value = datos.dni;
+        document.getElementById("telefono").value = datos.telefono;
+        document.getElementById("correo").value = datos.correo;
+        document.getElementById("matricula").value = datos.matricula;
+      } else {
+        alert("No se encontró el LM en la hoja Socios");
+      }
+    }).buscarSocioPorLM(lm);
+  }
+
+  // 🔹 Corregir datos en la hoja "Socios"
+  function corregirSocio() {
+    const datos = {
+      lm: document.getElementById("lm").value,
+      nombre: document.getElementById("nombre").value,
+      dni: document.getElementById("dni").value,
+      telefono: document.getElementById("telefono").value,
+      correo: document.getElementById("correo").value,
+      matricula: document.getElementById("matricula").value
+    };
+
+    if (!datos.lm) {
+      alert("Introduce el LM para poder corregir los datos");
+      return;
+    }
+
+    google.script.run.withSuccessHandler(function(ok) {
+      if (ok) {
+        alert("Datos actualizados correctamente en la hoja Socios");
+      } else {
+        alert("No se encontró el LM en la hoja Socios");
+      }
+    }).corregirSocio(datos);
+  }
+</script>
+
+<script>
+      google.script.run.withSuccessHandler(function(datos) {
+        const lista = document.getElementById("listaVerde");
+        datos.forEach(valor => {
+          const opcion = document.createElement("option");
+          opcion.value = valor;
+          lista.appendChild(opcion);
+        });
+      }).getAutocompleteData();
+    </script>
+
+  </body>
+</html>
+
+

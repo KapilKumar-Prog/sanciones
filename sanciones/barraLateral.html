@@ -1,0 +1,314 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <base target="_top">
+    <style>
+      body {
+        background-color: #f0f0f0;
+        font-family: Arial, sans-serif;
+      }
+      #barra-lateral {
+        background-color: #ccc;
+        padding: 2px;
+        border: 1px solid #ddd;
+        border-radius: 5px;
+        box-shadow: 0px 0px 10px rgba(0,0,0,0.2);
+      }
+      #fieldset-hojas {
+        border: 1px solid #ddd;
+        padding: 10px;
+        border-radius: 5px;
+        background-color: #f9f9f9;
+      }
+      #fieldset-hojas legend {
+        font-weight: bold;
+        font-size: 16px;
+        padding: 5px;
+        border-bottom: 1px solid #ddd;
+        background-color: white;
+        border-radius: 5px;
+      }
+      .boton-hoja {
+        background-color: #FFE4C4; //  #4CAF50
+        color: black;
+        padding: 5px 5px;
+        border: none;
+        border-radius: 5px;
+        cursor: pointer;
+        margin: 1px;
+        width: 100px;
+        height:50px;
+        box-shadow: 2px 2px 10px 2px #000000;
+        font-size: 15px;
+      }
+      .boton-hoja:hover {
+        background-color: #7FFFD4;
+        color:red;
+      }
+      legend{
+        color: black;
+        padding: 5px 5px;
+        border: none;
+        border-radius: 5px;
+        cursor: pointer;
+        margin: 1px;
+        
+        box-shadow: 2px 2px 10px 2px #000000;
+      }
+      legend:hover{
+        background-color: #7FFFD4;
+        color:red;
+      }
+    </style>
+  </head>
+  <body>
+<div style="margin: 10px 0; position: relative;">
+  <input type="text" id="busquedaNombre" placeholder="Buscar por nombre..." oninput="buscarCoincidencias()" autocomplete="off"
+         style="padding: 5px; border-radius: 5px; border: 1px solid #ccc; width: 200px; margin-right: 5px;">
+  <button onclick="ejecutarFiltrado()" style="padding: 5px 10px; border-radius: 5px; border: none; background-color: #4CAF50; color: white; cursor: pointer;">Buscar</button>
+  <div id="sugerencias" style="position: absolute; background: white; border: 1px solid #ccc; border-radius: 5px; max-height: 150px; overflow-y: auto; width: 200px; display: none;"></div>
+</div>
+
+  <div id="barra-lateral">
+    <fieldset id="fieldset-hojas">
+      <legend>🗃️Hojas</legend>
+      <button class="boton-hoja" onclick="pliegos()" title="Abrir hoja Registro pliegos">📝Registro pliegos</button>
+      <button class="boton-hoja" onclick="Directiva()" title="Abrir hoja informe directiva">📋Informe directiva</button>
+      <button class="boton-hoja" onclick="Testigos()" title="Abrir hoja de testigos">👥Testigos</button>
+      <button class="boton-hoja" onclick="Socios()" title="Abrir la hoja de socios">🤝Socios</button>
+      
+    </fieldset>
+    <fieldset id="fieldset-hojas">
+      <legend style="width:auto" onclick="activarHoja()" title="Abrir hoja de registro de entrada de sanciones">📝Registro entrada</legend>
+      <button class="boton-hoja" onclick="ActualizarPliegos()" title="Actualizar pliegos">🔄 <br> pliegos</button>
+      <button class="boton-hoja" onclick="VerSancion()" title="Ver ampliamente el contenido de la celda seleccionada">🔍Ampliar celda</button>
+      <button class="boton-hoja" onclick="VerPliego()" title="ver pliego si está activada la hoja de pliegos">👀 <br> pliego</button>
+      <button class="boton-hoja" onclick="VerSancionCompletaRegistro()" title="ver toda la sanción denuncia, pliego y testigos">👀 <br> Sancion</button>
+      </fieldset>
+
+    <fieldset id="fieldset-hojas">
+      <legend style="width:auto" onclick="Resolucion()" title="Abre la hoja Resolución para resolver">🔧Resolución</legend>
+      <button class="boton-hoja" onclick="FaltaLeve()" title="Aplicar falta leve">⚖️ leve</button>
+      <button class="boton-hoja" onclick="FaltaGrave()" title="Aplicar Falta Grave">⚖️ Grave</button> 
+      <button class="boton-hoja" onclick="FaltaMuyGrave()" title="Aplicar Falta muy grave">⚖️ muy grave</button> 
+      <button class="boton-hoja" onclick="Amonestacion()" title="Aplicar amonestación">⚖️ <br> Amonestación</button>
+      <button class="boton-hoja" onclick="ImprimirNulo()" title="Seleccionar hoja para imprimir Nulo">🖨️ <br> nulo</button> 
+      <button class="boton-hoja" onclick="ImprimirAmonestacion()" title="Seleccionar hoja para imprimir amonestación">🖨️amonestacion</button> 
+      <button class="boton-hoja" onclick="ImprimirCopiaSancionFirme()" title="Imprimir Sanción en firme">🖨️ Copia S firme</button>
+      <button class="boton-hoja" onclick="ImprimirSancionFirme()" title="Imprimir Sanción en firme">🖨️ <br> S firme</button>
+      <button class="boton-hoja" onclick="IntroducirSeguimiento()" title="Introducir seguimiento en el informe">📍Seguimiento</button>
+      <button class="boton-hoja" onclick="ResetearResolucion()" title="Rersetear informe, dejar informe en blanco">🔄 <br> Resetear</button>
+      <button class="boton-hoja" onclick="ActualizarMarticula()" title="Actualizar la matrícula cuando no coincide con la del pliego">🚗🔢Matrícula</button>
+      <button class="boton-hoja" onclick="Beredicto()" title="Introducir beredicto">🧑‍⚖️ <br> Beredicto</button>
+      <button class="boton-hoja" onclick="FinalizarEjecutar()" title="Ejecutar sanción pasar informe a la directiva y a pago sanciones">🏁 <br> Finalizar</button>
+    <div style="margin: 10px 0; position: relative;">
+      <input type="text" id="cantidad" placeholder="Cantidad..."
+         style="padding: 5px; border-radius: 5px; border: 1px solid #ccc; width: 100px; margin-right: 5px;">
+      <button  style="padding: 5px 10px; border-radius: 5px; border: none; background-color: #4CAF50; color: white; cursor: pointer;" onclick="enviarCantidad()">Aplicar</button>
+     
+      <button onclick="aumentarTodosLosBotones()">+</button>
+      <button onclick="disminuirTodosLosBotones()">-</button>
+    </div>
+    </fieldset>
+
+
+    <fieldset id="fieldset-hojas">
+      <legend style="width:auto" onclick="PagoSanciones()" title="Abrir hoja de pago de sanciones">💶Pago Sanciones</legend>
+      <button class="boton-hoja" onclick="ImprortarPagoSanciones()" title="Importar del administrador, estado de pago de sanciones">📥Importar</button>
+      <button class="boton-hoja" onclick="ExportarPagoSanciones()" title="Exportar al administrador, pago de sanciones">📤Exportar</button>
+    </fieldset>
+
+  </div> <!-- Barra lateral -->
+
+
+
+  <script>
+    function activarHoja() {
+      google.script.run.activarHoja1();
+    }
+
+    function pliegos() {
+      google.script.run.activarHoja2();
+    }
+
+    function Testigos() {
+      google.script.run.activarHoja3();
+    }
+
+    function Resolucion() {
+      google.script.run.activarHoja4();
+    }
+
+    function Socios() {
+      google.script.run.activarHoja5();
+    } 
+     
+    function Directiva() {
+      google.script.run.activarHoja6();
+    }  
+     
+    function PagoSanciones() {
+      google.script.run.activarHoja7();
+    }  
+
+    function ActualizarPliegos() { //marcarNoFirmado
+      google.script.run.activarHoja1();
+      google.script.run.colorearCeldasPliegos();
+      google.script.run.marcarNoFirmado();
+    }
+
+    function VerSancion() { 
+      google.script.run.showSelectedCellContent();
+    }
+
+    function VerPliego() { //
+      google.script.run.AumentarPliego();
+    }
+
+    function FaltaLeve() { 
+      google.script.run.FaltaLeve();
+    }
+
+    function FaltaGrave() { 
+      google.script.run.FaltaGrave();
+    }  
+
+    function FaltaMuyGrave() { 
+      google.script.run.FaltaMuyGrave();
+    }  
+  
+    function Beredicto() { 
+      google.script.run.promptAndAppendBeredicto();
+    }  
+
+    function ImprimirNulo() { //
+      google.script.run.checkAndSetNula();
+      google.script.run.promptAndAppendBeredicto();
+      google.script.run.imprimirInformeDirectiva();
+    }  
+
+      function ImprimirAmonestacion() { //
+      google.script.run.imprimirInformeSancionado();
+    }  
+
+      function ImprimirSancionFirme() { //
+      google.script.run.imprimirSancionEnFirme();
+    } 
+
+      function ImprimirCopiaSancionFirme() { //
+      google.script.run.imprimirCopiaSancionEnFirme();
+    } 
+
+      function VerSancionCompletaRegistro() { //
+      google.script.run.mostrarDatosCeldaSeleccionadaSancion();
+    } 
+ 
+      function IntroducirSeguimiento() { //
+      google.script.run.promptAndAppendToA8AndDirectiva();
+    } 
+    
+      function ActualizarMarticula() { //
+      google.script.run.CambiarMatricula();
+    } 
+      
+        function ImprortarPagoSanciones() { //
+      google.script.run.actualizarEstadoDePagoDeSanciones();
+    }  
+
+        function ExportarPagoSanciones() { //
+      google.script.run.exportarDatosPago();
+    } 
+      function FinalizarEjecutar() { //
+      google.script.run.updateResolutionFields();
+      google.script.run.BorrarResolucion();
+      google.script.run.activarHoja7();
+      google.script.run.actualizarEstadoDePagoDeSanciones();
+      google.script.run.exportarDatosPago();
+    } 
+
+      function ResetearResolucion() { //
+      google.script.run.updateResolutionFields();
+      google.script.run.BorrarResolucion();
+    } 
+
+    function FiltrarNombre(nombre) {
+      Logger.log("Filtrando por nombre: " + nombre);
+       // Aquí va tu lógica de filtrado, por ejemplo buscar en la hoja y hacer algo
+    }
+    
+    
+    function ejecutarFiltrado() {
+  const nombre = document.getElementById('busquedaNombre').value;
+  if (nombre.trim() !== "") {
+    google.script.run.FiltrarNombre(nombre);
+  } else {
+    alert("Por favor ingresa un nombre para filtrar.");
+  }
+}
+
+    function buscarCoincidencias() {
+    const input = document.getElementById('busquedaNombre').value;
+    if (input.length === 0) {
+      document.getElementById('sugerencias').style.display = "none";
+      return;
+    }
+    google.script.run.withSuccessHandler(mostrarSugerencias).buscarCoincidencias(input);
+  }
+
+  function mostrarSugerencias(coincidencias) {
+    const contenedor = document.getElementById('sugerencias');
+    contenedor.innerHTML = "";
+    
+    if (coincidencias.length === 0) {
+      contenedor.style.display = "none";
+      return;
+    }
+
+    coincidencias.forEach(nombre => {
+      const div = document.createElement("div");
+      div.textContent = nombre;
+      div.style.padding = "5px";
+      div.style.cursor = "pointer";
+      div.onclick = () => {
+        document.getElementById('busquedaNombre').value = nombre;
+        contenedor.style.display = "none";
+        FiltrarNombre(nombre);  // Ejecuta la función principal si quieres
+      };
+      contenedor.appendChild(div);
+    });
+
+    contenedor.style.display = "block";
+  }
+
+  function FiltrarNombre(nombre) {
+    google.script.run.FiltrarNombre(nombre);
+  }
+
+//   botones para aumentar el tamaño de los botones  //
+
+function aumentarTodosLosBotones() {
+        const botones = document.querySelectorAll('.boton-hoja');
+        botones.forEach(btn => {
+          const anchoActual = parseInt(window.getComputedStyle(btn).width);
+          btn.style.width = (anchoActual + 1) + 'px';
+        });
+      }
+function disminuirTodosLosBotones() {
+        const botones = document.querySelectorAll('.boton-hoja');
+        botones.forEach(btn => {
+          const anchoActual = parseInt(window.getComputedStyle(btn).width);
+          btn.style.width = (anchoActual - 1) + 'px';
+        });
+      }   
+
+function enviarCantidad() {
+        const cantidad = document.getElementById("cantidad").value;
+        google.script.run
+          
+          .IntroducirCantidadAPagarDesdeFormulario(cantidad);
+      }
+
+  </script>
+</body>
+
+</html>
