@@ -46,9 +46,9 @@ function onFormSubmit(e) {
 
 // ++++++++++VARIABLES GLOBALES +++++++++++++++++++++++//
 var sheetReg = SpreadsheetApp.getActiveSpreadsheet().getSheetByName("Registro entrada sanciones");
-var sheetPli = SpreadsheetApp.getActiveSpreadsheet().getSheetByName("Registro Pliegos");
+var sheetPli = SpreadsheetApp.getActiveSpreadsheet().getSheetByName("Registro pliegos");
 var sheetTes = SpreadsheetApp.getActiveSpreadsheet().getSheetByName("Testigos");
-var sheetRes = SpreadsheetApp.getActiveSpreadsheet().getSheetByName("Resolusión");
+var sheetRes = SpreadsheetApp.getActiveSpreadsheet().getSheetByName("Resolución");
 var sheetSocios = SpreadsheetApp.getActiveSpreadsheet().getSheetByName("Socios");
 // ++++++++++ FIN - VARIABLES GLOBALES +++++++++++++++++++++++//
 
@@ -188,7 +188,7 @@ function procesarCeldaH2() { // ESTA FUNCIÓN DIVIDE SANCIONES MÚLTIPLES
 //++++++++++++++++++ACTUALIZA LA LISTA DESPLEGABLE DE Nº EXPEDIENTE++++++++++++++++++++++++++++++++++++++++++++++++++++//
 //*********************************************************************************************************************//
 
-function onEdit(e) {    //---Registro entrada sanciones//
+/*function onEdit(e) {    //---Registro entrada sanciones//          ****** Cambio realizado por Kapi ****
   // Definir la hoja y el rango donde se realizará la edición
   var sheet = e.source.getActiveSheet();
   var range = e.range;
@@ -2088,7 +2088,7 @@ function mostrarDatosCeldaSeleccionadaSancion() {
   // Guardar fila activa para usar después
   PropertiesService.getScriptProperties().setProperty("filaActiva", fila.toString());
 
-  const html = HtmlService.createHtmlOutputFromFile('VentanaSancion')
+  const html = HtmlService.createHtmlOutputFromFile('ventanaSancion')
     .setWidth(800)
     .setHeight(600);
 
@@ -2348,7 +2348,7 @@ function abrirFormulario() {
     .setHeight(1100);
   SpreadsheetApp.getUi().showModalDialog(html, "Nuevo Registro de Sanción");
 }
-
+/*                                                                            ***** Cambio realizado por Kapi *****
 // Guardar archivo en Drive y devolver enlace
 function subirArchivo(obj) {
   try {
@@ -2362,7 +2362,7 @@ function subirArchivo(obj) {
     return "Error al subir archivo: " + e.message;
   }
 }
-
+*/
 // Procesar datos al enviar
 function procesarFormulario(datos) {
   const hoja = SpreadsheetApp.getActiveSpreadsheet().getSheetByName("Registro entrada sanciones");
