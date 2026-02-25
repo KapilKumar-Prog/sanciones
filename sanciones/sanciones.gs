@@ -2366,6 +2366,7 @@ function subirArchivo(obj) {
 // Procesar datos al enviar
 function procesarFormulario(datos) {
   const hoja = SpreadsheetApp.getActiveSpreadsheet().getSheetByName("Registro entrada sanciones");
+  enviarCodigoFirmaDigital(correo, nombre, nuevoM); // 👉 función para enviar código de firma digital (por @Kapi)
   
   // Insertar fila arriba de la fila 2
   hoja.insertRowBefore(2);
@@ -2504,6 +2505,8 @@ function subirArchivo(obj) {
 // Procesar los datos del formulario de "Registro pliegos"
 function procesarFormularioPliegos(datos) {
   const hoja = SpreadsheetApp.getActiveSpreadsheet().getSheetByName("Registro pliegos");
+  enviarPliegoPorCorreoAutomatico(datos.copiado || "", correo, nombre); // 👉 función para enviar correo automático con el pliego (por @Kapi)
+
   
   // Insertar fila encima de la fila 2
   hoja.insertRowBefore(2);
