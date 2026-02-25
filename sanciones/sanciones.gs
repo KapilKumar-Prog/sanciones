@@ -2366,7 +2366,6 @@ function subirArchivo(obj) {
 // Procesar datos al enviar
 function procesarFormulario(datos) {
   const hoja = SpreadsheetApp.getActiveSpreadsheet().getSheetByName("Registro entrada sanciones");
-  enviarCodigoFirmaDigital(correo, nombre, nuevoM); // 👉 función para enviar código de firma digital (por @Kapi)
   
   // Insertar fila arriba de la fila 2
   hoja.insertRowBefore(2);
@@ -2410,6 +2409,10 @@ function procesarFormulario(datos) {
   hoja.getRange("L2").setValue(testigos);
   hoja.getRange("M2").setValue(nuevoM);
   hoja.getRange("P2").setValue(archivo);
+
+    // Automatización: enviar OTP de firma digital al denunciante  por @kapi
+  enviarCodigoFirmaDigital(correo, nombre, nuevoM); // 👉 función para enviar código de firma digital (por @Kapi)
+
 }
 
 
@@ -2505,7 +2508,6 @@ function subirArchivo(obj) {
 // Procesar los datos del formulario de "Registro pliegos"
 function procesarFormularioPliegos(datos) {
   const hoja = SpreadsheetApp.getActiveSpreadsheet().getSheetByName("Registro pliegos");
-  enviarPliegoPorCorreoAutomatico(datos.copiado || "", correo, nombre); // 👉 función para enviar correo automático con el pliego (por @Kapi)
 
   
   // Insertar fila encima de la fila 2
@@ -2532,6 +2534,10 @@ function procesarFormularioPliegos(datos) {
   hoja.getRange("I2").setValue(contenido);
   hoja.getRange("J2").setValue(nombre);
   hoja.getRange("K2").setValue(archivo);
+
+    // Automatización: enviar pliego por email y solicitar acuse de recibo
+  enviarPliegoPorCorreoAutomatico(datos.copiado || "", correo, nombre); // 👉 función para enviar correo automático con el pliego (por @Kapi)
+
 }
 
 
@@ -2703,4 +2709,243 @@ function getAutocompleteData() {
 
   const datosUnicos = [...new Set([...datos1, ...datos2])];
   return datosUnicos;
+}
+
+function getOrCreateSystemSheet_() {
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  var sheet = ss.getSheetByName("SYS_AUTOMATIZACION");
+  if (!sheet) {
+    sheet = ss.insertSheet("SYS_AUTOMATIZACION");
+    sheet.getRange(1, 1, 1, 10).setValues([["timestamp", "tipo", "expediente", "email", "tokenHash", "otpHash", "otpExpira", "estado", "confirmadoEn", "meta"]]);
+    sheet.hideSheet();
+  }
+  return sheet;
+}
+
+function hashTexto_(texto) {
+  var digest = Utilities.computeDigest(Utilities.DigestAlgorithm.SHA_256, texto, Utilities.Charset.UTF_8);
+  return digest.map(function(b) {
+    var s = (b < 0 ? b + 256 : b).toString(16);
+    return s.length === 1 ? "0" + s : s;
+  }).join("");
+}
+
+function generarCodigo4Digitos_() {
+  return Math.floor(1000 + Math.random() * 9000).toString();
+}
+
+function registrarSistema_(tipo, expediente, email, tokenPlano, otpPlano, otpExpira, estado, meta) {
+  var sheet = getOrCreateSystemSheet_();
+  sheet.insertRowBefore(2);
+  sheet.getRange(2, 1, 1, 10).setValues([[
+    new Date(),
+    tipo || "",
+    expediente || "",
+    email || "",
+    tokenPlano ? hashTexto_(tokenPlano) : "",
+    otpPlano ? hashTexto_(otpPlano) : "",
+    otpExpira || "",
+    estado || "PENDIENTE",
+    "",
+    meta || ""
+  ]]);
+}
+
+function marcarSistemaConfirmado_(sheet, row) {
+  sheet.getRange(row, 8).setValue("CONFIRMADO");
+  sheet.getRange(row, 9).setValue(new Date());
+}
+
+function getWebAppUrl_() {
+  return ScriptApp.getService().getUrl();
+}
+
+function enviarCodigoFirmaDigital(correo, nombre, expediente) {
+  if (!correo || !expediente) return;
+
+  var codigo = generarCodigo4Digitos_();
+  var expira = new Date(Date.now() + 15 * 60 * 1000);
+  registrarSistema_("OTP_FIRMA", expediente, correo, "", codigo, expira, "PENDIENTE", "");
+
+  var baseUrl = getWebAppUrl_();
+  var enlace = baseUrl ? (baseUrl + "?action=firma&expediente=" + encodeURIComponent(expediente)) : "";
+  var htmlBody =
+    "<p>Hola " + (nombre || "") + ",</p>" +
+    "<p>Tu código de firma digital para el expediente <b>" + expediente + "</b> es:</p>" +
+    "<h2 style='letter-spacing:2px;'>" + codigo + "</h2>" +
+    "<p>Caduca en 15 minutos.</p>" +
+    (enlace ? ("<p>Introduce el código aquí: <a href='" + enlace + "'>Confirmar firma</a></p>") : "");
+
+  MailApp.sendEmail({
+    to: correo,
+    subject: "Código de firma digital - Expediente " + expediente,
+    htmlBody: htmlBody
+  });
+}
+
+function verificarCodigoFirma(expediente, codigo) {
+  if (!expediente || !codigo) {
+    return { ok: false, mensaje: "Debes indicar expediente y código." };
+  }
+
+  var sheet = getOrCreateSystemSheet_();
+  var lastRow = sheet.getLastRow();
+  if (lastRow < 2) return { ok: false, mensaje: "No hay código pendiente." };
+
+  var rows = sheet.getRange(2, 1, lastRow - 1, 10).getValues();
+  var codigoHash = hashTexto_(codigo);
+
+  for (var i = 0; i < rows.length; i++) {
+    var tipo = rows[i][1];
+    var exp = rows[i][2];
+    var otpHash = rows[i][5];
+    var expira = rows[i][6];
+    var estado = rows[i][7];
+
+    if (tipo === "OTP_FIRMA" && exp === expediente && estado === "PENDIENTE") {
+      if (new Date(expira).getTime() < Date.now()) {
+        return { ok: false, mensaje: "El código ha caducado." };
+      }
+      if (otpHash !== codigoHash) {
+        return { ok: false, mensaje: "Código incorrecto." };
+      }
+
+      var rowNumber = i + 2;
+      marcarSistemaConfirmado_(sheet, rowNumber);
+      marcarFirmaDigitalEnRegistro_(expediente);
+      return { ok: true, mensaje: "Firma digital confirmada correctamente." };
+    }
+  }
+
+  return { ok: false, mensaje: "No existe un código pendiente para este expediente." };
+}
+
+function marcarFirmaDigitalEnRegistro_(expediente) {
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  var sheet = ss.getSheetByName("Registro entrada sanciones");
+  var data = sheet.getRange(2, 13, Math.max(sheet.getLastRow() - 1, 0), 1).getValues();
+
+  for (var i = 0; i < data.length; i++) {
+    if (data[i][0] == expediente) {
+      var row = i + 2;
+      sheet.getRange(row, 17).setValue("FIRMA DIGITAL CONFIRMADA"); // Columna Q
+      sheet.getRange(row, 18).setValue(new Date()); // Columna R
+      break;
+    }
+  }
+}
+
+function enviarPliegoPorCorreoAutomatico(expediente, correoLM, nombreLM) {
+  if (!expediente) return;
+
+  var baseUrl = getWebAppUrl_();
+
+  if (correoLM) {
+    var tokenLm = Utilities.getUuid();
+    registrarSistema_("ACUSE_PLIEGO_LM", expediente, correoLM, tokenLm, "", "", "ENVIADO", "");
+    var enlaceLm = baseUrl ? (baseUrl + "?action=acuse&token=" + encodeURIComponent(tokenLm)) : "";
+    var htmlLm =
+      "<p>Hola " + (nombreLM || "") + ",</p>" +
+      "<p>Se ha emitido un pliego relacionado con el expediente <b>" + expediente + "</b>.</p>" +
+      (enlaceLm ? ("<p>Confirma recepción aquí: <a href='" + enlaceLm + "'>Confirmar recepción</a></p>") : "");
+
+    MailApp.sendEmail({
+      to: correoLM,
+      subject: "Pliego de descargo - Expediente " + expediente,
+      htmlBody: htmlLm
+    });
+  }
+
+  enviarAcuseATestigos_(expediente, baseUrl);
+}
+
+function enviarAcuseATestigos_(expediente, baseUrl) {
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  var hojaTestigos = ss.getSheetByName("Testigos");
+  if (!hojaTestigos || hojaTestigos.getLastRow() < 2) return;
+
+  var values = hojaTestigos.getRange(2, 1, hojaTestigos.getLastRow() - 1, 3).getValues();
+  for (var i = 0; i < values.length; i++) {
+    var correo = values[i][1]; // columna B
+    var exp = values[i][2]; // columna C
+
+    if (correo && exp == expediente) {
+      var token = Utilities.getUuid();
+      registrarSistema_("ACUSE_PLIEGO_TESTIGO", expediente, correo, token, "", "", "ENVIADO", "");
+      var enlace = baseUrl ? (baseUrl + "?action=acuse&token=" + encodeURIComponent(token)) : "";
+      var html =
+        "<p>Se ha registrado un pliego vinculado al expediente <b>" + expediente + "</b>.</p>" +
+        (enlace ? ("<p>Confirma recepción aquí: <a href='" + enlace + "'>Confirmar recepción</a></p>") : "");
+
+      MailApp.sendEmail({
+        to: correo,
+        subject: "Confirmación de recepción de pliego - Expediente " + expediente,
+        htmlBody: html
+      });
+    }
+  }
+}
+
+// Manejar confirmación de acuse de recibo por @Kapi
+function confirmarAcuseRecibo(token) {
+  if (!token) return "<h3>Token inválido.</h3>";
+
+  var hash = hashTexto_(token);
+  var sheet = getOrCreateSystemSheet_();
+  var lastRow = sheet.getLastRow();
+  if (lastRow < 2) return "<h3>No hay datos para confirmar.</h3>";
+
+  var rows = sheet.getRange(2, 1, lastRow - 1, 10).getValues();
+  for (var i = 0; i < rows.length; i++) {
+    var tipo = rows[i][1];
+    var estado = rows[i][7];
+    var tokenHash = rows[i][4];
+
+    if ((tipo === "ACUSE_PLIEGO_LM" || tipo === "ACUSE_PLIEGO_TESTIGO") && tokenHash === hash) {
+      if (estado === "CONFIRMADO") {
+        return "<h3>Este acuse ya fue confirmado.</h3>";
+      }
+      marcarSistemaConfirmado_(sheet, i + 2);
+      return "<h3>Recepción confirmada. Gracias.</h3>";
+    }
+  }
+
+  return "<h3>Token no encontrado.</h3>";
+}
+
+// Sustituye tu doGet actual por este:
+function doGet(e) {
+  var params = e && e.parameter ? e.parameter : {};
+  var action = params.action || "";
+
+  if (action === "firma") {
+    var expediente = params.expediente || "";
+    var html = `
+      <html><body style="font-family:Arial;padding:16px;max-width:420px;margin:auto;">
+        <h3>Confirmar firma digital</h3>
+        <p>Expediente: <b>${expediente}</b></p>
+        <label>Código de 4 dígitos</label>
+        <input id="codigo" maxlength="4" style="width:100%;padding:8px;margin:8px 0" />
+        <button onclick="validar()" style="padding:10px 14px;">Confirmar firma</button>
+        <p id="msg" style="margin-top:12px;"></p>
+        <script>
+          function validar(){
+            var codigo=document.getElementById('codigo').value.trim();
+            google.script.run.withSuccessHandler(function(res){
+              document.getElementById('msg').innerText=res.mensaje;
+              document.getElementById('msg').style.color=res.ok?'green':'red';
+            }).verificarCodigoFirma('${expediente}', codigo);
+          }
+        </script>
+      </body></html>`;
+    return HtmlService.createHtmlOutput(html).setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
+  }
+
+  if (action === "acuse") {
+    var token = params.token || "";
+    var resultado = confirmarAcuseRecibo(token);
+    return HtmlService.createHtmlOutput(`<html><body style="font-family:Arial;padding:16px;">${resultado}</body></html>`);
+  }
+
+  return HtmlService.createHtmlOutput("OK");
 }
